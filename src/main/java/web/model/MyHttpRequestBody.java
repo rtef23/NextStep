@@ -9,5 +9,4 @@ package web.model;
 /**
  * @author 송주용
  */
-public class MyHttpRequestBody {
-}
+public class MyHttpRequestBody {}

@@ -12,9 +12,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import util.FileUtil;
+import web.builder.MyHttpRequestBuilder;
+import web.manager.ControllerManager;
+import web.model.MappingInformation;
 import web.model.MyHttpRequest;
 
 public class RequestHandler extends Thread {
+	private ControllerManager controllerManager = ControllerManager.getInstance();
 	private static final Logger log = LoggerFactory.getLogger(RequestHandler.class);
 
 	private Socket connection;
@@ -27,9 +31,10 @@ public class RequestHandler extends Thread {
 		log.debug("New Client Connect! Connected IP : {}, Port : {}", connection.getInetAddress(),
 			connection.getPort());
 
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream())); OutputStream out = connection.getOutputStream()) {
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+			OutputStream out = connection.getOutputStream()) {
 			// TODO 사용자 요청에 대한 처리는 이 곳에 구현하면 된다.
-			MyHttpRequest request = MyHttpRequest.build(readRequest(reader));
+			MyHttpRequest request = MyHttpRequestBuilder.build(readRequest(reader));
 			byte[] body;
 
 			if (StringUtils.equals(request.getMyHttpRequestHeader().getPath(), "/index.html")) {
@@ -37,6 +42,11 @@ public class RequestHandler extends Thread {
 			} else {
 				body = "Hello, World".getBytes();
 			}
+//			MappingInformation information = buildMappingInformation(request);
+//			
+//			Object result = controllerManager.getController(information).execute(request);
+//			
+//			
 
 			DataOutputStream dos = new DataOutputStream(out);
 			response200Header(dos, body.length);
@@ -47,11 +57,25 @@ public class RequestHandler extends Thread {
 			try {
 				DataOutputStream dos = new DataOutputStream(connection.getOutputStream());
 				response400Header(dos, 0);
+				responseBody(dos, new byte[] {});
 			} catch (IOException ioe) {
 				log.error(ioe.getMessage());
 			}
 
 		}
+	}
+
+	private void processResult(Object result) {
+		
+	}
+	
+	private MappingInformation buildMappingInformation(MyHttpRequest request) {
+		MappingInformation information = new MappingInformation();
+
+		information.setMethod(request.getMyHttpRequestHeader().getHttpMethod());
+		information.setUrlPath(request.getMyHttpRequestHeader().getPath());
+
+		return information;
 	}
 
 	private String readRequest(BufferedReader reader) throws IOException {

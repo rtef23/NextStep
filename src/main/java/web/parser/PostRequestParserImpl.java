@@ -6,17 +6,22 @@
 
 package web.parser;
 
+import web.model.MyHttpRequestBody;
+import web.model.MyHttpRequestHeader;
+
 /**
  * @author 송주용
  */
 public class PostRequestParserImpl implements RequestParser {
-	@Override
-	public void parse(String target) {
 
+	@Override
+	public void parseHeader(MyHttpRequestHeader header, String target) {
+		
 	}
 
 	@Override
-	public void parse(String[] targets) {
-
+	public MyHttpRequestBody parseBody(String target) {
+		return null;
 	}
+	
 }

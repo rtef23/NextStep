@@ -6,12 +6,16 @@
 
 package web.model;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import web.enums.MyHttpMethod;
 
 /**
  * @author 송주용
  */
 public class MyHttpRequestHeader {
+	private Map<String, String> parameters;
 	private MyHttpMethod httpMethod;
 	private String path;
 	private String protocol;
@@ -23,23 +27,20 @@ public class MyHttpRequestHeader {
 	private String acceptEncoding;
 	private String acceptLanguage;
 
-	public static MyHttpRequestHeader parseHeader(String headerString) throws IllegalArgumentException {
-		MyHttpRequestHeader requestHeader = new MyHttpRequestHeader();
-		String[] requestContent = headerString.split("\r\n");
+	public MyHttpRequestHeader() {
+		parameters = new HashMap<>();
+	}
 
-		String[] firstLineElements = requestContent[0].split(" ");
+	public String getParameter(String key) {
+		return parameters.get(key);
+	}
 
-		if (firstLineElements.length != 3) {
-			throw new IllegalArgumentException();
-		}
+	public void setParameters(Map<String, String> parameters) {
+		this.parameters = parameters;
+	}
 
-		MyHttpMethod method = MyHttpMethod.classifyMethod(firstLineElements[0]);
-
-		requestHeader.setHttpMethod(method);
-		requestHeader.setPath(firstLineElements[1]);
-		requestHeader.setProtocol(firstLineElements[2]);
-
-		return requestHeader;
+	public Map<String, String> getParameters() {
+		return parameters;
 	}
 
 	public MyHttpMethod getHttpMethod() {

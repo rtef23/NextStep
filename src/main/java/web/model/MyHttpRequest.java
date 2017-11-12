@@ -6,8 +6,7 @@
 
 package web.model;
 
-import web.parser.RequestParser;
-import web.parser.RequestParserFactory;
+import java.util.Map;
 
 /**
  * @author 송주용
@@ -16,26 +15,19 @@ public class MyHttpRequest {
 	private MyHttpRequestHeader myHttpRequestHeader;
 	private MyHttpRequestBody myHttpRequestBody;
 
-	private MyHttpRequest() {
+	public Map<String, String> getParameters() {
+		return myHttpRequestHeader.getParameters();
 	}
 
-	public static MyHttpRequest build(String requestString) throws IllegalArgumentException {
-		MyHttpRequest request = new MyHttpRequest();
-		String[] dividedRequest = requestString.split("\r\n\r\n");
-
-		request.setMyHttpRequestHeader(MyHttpRequestHeader.parseHeader(dividedRequest[0]));
-		RequestParser parser = RequestParserFactory.getParser(request.getMyHttpRequestHeader().getHttpMethod());
-
-		parser.parse(dividedRequest);
-
-		return request;
+	public String getParameter(String key) {
+		return myHttpRequestHeader.getParameter(key);
 	}
 
-	private void setMyHttpRequestHeader(MyHttpRequestHeader myHttpRequestHeader) {
+	public void setMyHttpRequestHeader(MyHttpRequestHeader myHttpRequestHeader) {
 		this.myHttpRequestHeader = myHttpRequestHeader;
 	}
 
-	private void setMyHttpRequestBody(MyHttpRequestBody myHttpRequestBody) {
+	public void setMyHttpRequestBody(MyHttpRequestBody myHttpRequestBody) {
 		this.myHttpRequestBody = myHttpRequestBody;
 	}
 
