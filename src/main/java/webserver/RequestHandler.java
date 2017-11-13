@@ -1,157 +1,180 @@
 package webserver;
 
-import db.DataBase;
-import model.User;
-import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import util.FileUtil;
-import util.HttpRequestUtils;
-import util.RegularExpressionUtil;
-
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.Socket;
+import java.util.HashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import db.DataBase;
+import model.User;
+import util.FileUtil;
+import util.HttpRequestUtils;
+import util.HttpResponseUtils;
+import util.mStringUtils;
+
 public class RequestHandler extends Thread {
-    private static final int METHOD = 0;
-    private static final int PATH = 1;
-    private static final int PROTOCOL = 2;
-    private static final Logger log = LoggerFactory.getLogger(RequestHandler.class);
+	private static final int METHOD = 0;
+	private static final int PATH = 1;
+	private static final int PROTOCOL = 2;
 
-    private Socket connection;
+	private static final String TEXT_PLAIN = "text/plain";
+	private static final String TEXT_HTML = "text/html";
+	private static final String TEXT_JAVASCRIPT = "text/javascript";
+	private static final String TEXT_CSS = "text/css";
 
-    public RequestHandler(Socket connectionSocket) {
-        this.connection = connectionSocket;
-    }
+	private static final String CONTENT_TYPE = "contentType";
+	private static final String LOCATION = "location";
 
-    public void run() {
-        log.debug("New Client Connect! Connected IP : {}, Port : {}", connection.getInetAddress(),
-                connection.getPort());
+	private static final Logger log = LoggerFactory.getLogger(RequestHandler.class);
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-             OutputStream out = connection.getOutputStream()) {
-            DataOutputStream dos = new DataOutputStream(out);
-            byte[] body;
-            String frontLine = reader.readLine();
+	private Socket connection;
 
-            if (StringUtils.isEmpty(frontLine)) {
-                throw new IllegalArgumentException();
-            }
+	public RequestHandler(Socket connectionSocket) {
+		this.connection = connectionSocket;
+	}
 
-            String[] frontLineProperties = frontLine.split(" ");
+	public void run() {
+		log.debug("New Client Connect! Connected IP : {}, Port : {}", connection.getInetAddress(),
+			connection.getPort());
+		Map<String, String> responseHeaderProperties = new HashMap<>();
 
-            if (frontLineProperties.length != 3) {
-                throw new IllegalArgumentException();
-            }
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), "UTF-8"));
+			DataOutputStream dos = new DataOutputStream(connection.getOutputStream())) {
 
-            log.info("[{}] {}", frontLineProperties[METHOD], frontLineProperties[PATH]);
+			try {
+				byte[] body;
+				String frontLine = reader.readLine();
 
-            if (RegularExpressionUtil.isMatch(".html$", frontLineProperties[PATH])) {
-                body = FileUtil.readFile("webapp" + frontLineProperties[1]);
-                response200Header(dos, body.length);
-                responseBody(dos, body);
-                return;
-            }
+				if (mStringUtils.isAnyEmpty(frontLine)) {
+					throw new IllegalArgumentException();
+				}
 
-            if (RegularExpressionUtil.isMatch(".js$", frontLineProperties[PATH])) {
-                body = FileUtil.readFile("webapp" + frontLineProperties[1]);
-                response200ScriptHeader(dos, body.length);
-                responseBody(dos, body);
-                return;
-            }
-            if (RegularExpressionUtil.isMatch(".css$", frontLineProperties[PATH])) {
-                body = FileUtil.readFile("webapp" + frontLineProperties[PATH]);
-                response200CssHeader(dos, body.length);
-                responseBody(dos, body);
-                return;
-            }
+				String[] lineElements = frontLine.split(" ");
 
-            int indexOfQMark = frontLineProperties[PATH].indexOf("?");
+				if (lineElements.length != 3) {
+					throw new IllegalArgumentException();
+				}
 
-            if (indexOfQMark >= 0) {
-                String queryString = frontLineProperties[PATH].substring(indexOfQMark + 1, frontLineProperties[PATH].length());
-                Map<String, String> queries = HttpRequestUtils.parseQueryString(queryString);
+				String method = lineElements[METHOD];
+				String path = lineElements[PATH];
+				String protocol = lineElements[PROTOCOL];
 
-                User user = parseQueryToUser(queries);
+				if (mStringUtils.isAnyEmpty(method, path, protocol)) {
+					throw new IllegalArgumentException();
+				}
 
-                DataBase.addUser(user);
-            }
+				log.info("[{}] {}", method, path);
 
-            response200Header(dos, 0);
-            responseBody(dos, new byte[]{});
-        } catch (IOException | IllegalArgumentException e) {
-            try {
-                DataOutputStream dos = new DataOutputStream(connection.getOutputStream());
-                response400Header(dos, 0);
-                responseBody(dos, new byte[]{});
-            } catch (IOException ioe) {
-                log.error(ioe.getMessage());
-            }
+				if (path.endsWith(".html")) {
+					body = FileUtil.readFile("webapp" + path);
+					responseHeaderProperties.put(CONTENT_TYPE, TEXT_HTML);
+					responseHeader(200, responseHeaderProperties, dos, body.length);
+					responseBody(dos, body);
+					return;
+				}
 
-        }
-    }
+				if (path.endsWith(".js")) {
+					body = FileUtil.readFile("webapp" + path);
+					responseHeaderProperties.put(CONTENT_TYPE, TEXT_JAVASCRIPT);
+					responseHeader(200, responseHeaderProperties, dos, body.length);
+					responseBody(dos, body);
+					return;
+				}
+				if (path.endsWith(".css")) {
+					body = FileUtil.readFile("webapp" + path);
+					responseHeaderProperties.put(CONTENT_TYPE, TEXT_CSS);
+					responseHeader(200, responseHeaderProperties, dos, body.length);
+					responseBody(dos, body);
+					return;
+				}
 
-    private User parseQueryToUser(Map<String, String> queries) {
-        String id = queries.get("userId");
-        String password = queries.get("password");
-        String name = queries.get("name");
-        String email = queries.get("email");
+				int indexOfQMark = path.indexOf("?");
 
-        return new User(id, password, name, email);
-    }
+				if (indexOfQMark >= 0) {
+					String queryString = path.substring(indexOfQMark + 1, path.length());
+					Map<String, String> queries = HttpRequestUtils.parseQueryString(queryString);
+					path = path.replace(queryString, "").replace("?", "");
 
+					if (path.equals("/user/create")) {
+						User user = parseQueryToUser(queries);
 
-    private void response200CssHeader(DataOutputStream dos, int lengthOfBodyContent) {
-        try {
-            dos.writeBytes("HTTP/1.1 200 OK \r\n");
-            dos.writeBytes("Content-Type: text/css;charset=utf-8\r\n");
-            dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
-            dos.writeBytes("\r\n");
-        } catch (IOException e) {
-            log.error(e.getMessage());
-        }
-    }
+						DataBase.addUser(user);
 
-    private void response200ScriptHeader(DataOutputStream dos, int lengthOfBodyContent) {
-        try {
-            dos.writeBytes("HTTP/1.1 200 OK \r\n");
-            dos.writeBytes("Content-Type: text/javascript;charset=utf-8\r\n");
-            dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
-            dos.writeBytes("\r\n");
-        } catch (IOException e) {
-            log.error(e.getMessage());
-        }
-    }
+						responseHeaderProperties.put(CONTENT_TYPE, TEXT_PLAIN);
+						responseHeaderProperties.put(LOCATION, "/index.html");
+						responseHeader(302, responseHeaderProperties, dos, 0);
+						responseBody(dos, new byte[] {});
+					}
+				}
 
-    private void response200Header(DataOutputStream dos, int lengthOfBodyContent) {
-        try {
-            dos.writeBytes("HTTP/1.1 200 OK \r\n");
-            dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
-            dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
-            dos.writeBytes("\r\n");
-        } catch (IOException e) {
-            log.error(e.getMessage());
-        }
-    }
+				responseHeaderProperties.put(CONTENT_TYPE, TEXT_PLAIN);
+				responseHeader(200, responseHeaderProperties, dos, 0);
+				responseBody(dos, new byte[] {});
+			} catch (IOException | IllegalArgumentException e) {
+				log.error(e.getMessage());
+				responseHeaderProperties.put(CONTENT_TYPE, TEXT_PLAIN);
+				responseHeader(400, responseHeaderProperties, dos, 0);
+				responseBody(dos, new byte[] {});
+			} catch (Exception e) {
+				log.error(e.getMessage());
+				responseHeaderProperties.put(CONTENT_TYPE, TEXT_PLAIN);
+				responseHeader(500, responseHeaderProperties, dos, 0);
+				responseBody(dos, new byte[] {});
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage());
+		}
 
-    private void response400Header(DataOutputStream dos, int lengthOfBodyContent) {
-        try {
-            dos.writeBytes("HTTP/1.1 400 Bad Request \r\n");
-            dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
-            dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
-            dos.writeBytes("\r\n");
-        } catch (IOException e) {
-            log.error(e.getMessage());
-        }
-    }
+	}
 
-    private void responseBody(DataOutputStream dos, byte[] body) {
-        try {
-            dos.write(body, 0, body.length);
-            dos.flush();
-        } catch (IOException e) {
-            log.error(e.getMessage());
-        }
-    }
+	private User parseQueryToUser(Map<String, String> queries) throws IllegalArgumentException {
+		String id = queries.get("userId");
+		String password = queries.get("password");
+		String name = queries.get("name");
+		String email = queries.get("email");
+
+		if (mStringUtils.isAnyEmpty(id, password, name, email)) {
+			throw new IllegalArgumentException();
+		}
+
+		return new User(id, password, name, email);
+	}
+
+	private void responseHeader(int statusCode, Map<String, String> headerProperties, DataOutputStream dos,
+		int lengthOfBodyContent) {
+		try {
+			dos.writeBytes(
+				String.format("HTTP/1.1 %d %s \r\n", statusCode, HttpResponseUtils.responseStatusString(statusCode)));
+
+			if (statusCode / 100 == 3 && headerProperties.containsKey(LOCATION)) {
+				dos.writeBytes(String.format("Location: %s\r\n", headerProperties.get(LOCATION)));
+			}
+
+			if (headerProperties.containsKey(CONTENT_TYPE)) {
+				dos.writeBytes(String.format("Content-Type: %s;charset=utf-8\r\n", headerProperties.get(CONTENT_TYPE)));
+			} else {
+				dos.writeBytes(String.format("Content-Type: %s;charset=utf-8\r\n", TEXT_PLAIN));
+			}
+
+			dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
+			dos.writeBytes("\r\n");
+		} catch (IOException e) {
+			log.error(e.getMessage());
+		}
+	}
+
+	private void responseBody(DataOutputStream dos, byte[] body) {
+		try {
+			dos.write(body, 0, body.length);
+			dos.flush();
+		} catch (IOException e) {
+			log.error(e.getMessage());
+		}
+	}
 }
