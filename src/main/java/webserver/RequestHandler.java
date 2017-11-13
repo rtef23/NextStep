@@ -110,12 +110,14 @@ public class RequestHandler extends Thread {
 						responseHeaderProperties.put(LOCATION, "/index.html");
 						responseHeader(302, responseHeaderProperties, dos, 0);
 						responseBody(dos, new byte[] {});
+						return;
 					}
 				}
 
 				responseHeaderProperties.put(CONTENT_TYPE, TEXT_PLAIN);
 				responseHeader(200, responseHeaderProperties, dos, 0);
 				responseBody(dos, new byte[] {});
+				return;
 			} catch (IOException | IllegalArgumentException e) {
 				log.error(e.getMessage());
 				responseHeaderProperties.put(CONTENT_TYPE, TEXT_PLAIN);
