@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/nextStep.iml" filepath="$PROJECT_DIR$/nextStep.iml" />
+      <module fileurl="file://C:\max\max3\NextStep\nextStep.iml" filepath="C:\max\max3\NextStep\nextStep.iml" />
     </modules>
   </component>
 </project>
