@@ -7,8 +7,8 @@ package util;
  * @author 송주용
  *
  */
-public class mStringUtils {
-	private mStringUtils() {}
+public class MyStringUtils {
+	private MyStringUtils() {}
 
 	public static boolean isAnyEmpty(String... strings) {
 		if (strings == null) {

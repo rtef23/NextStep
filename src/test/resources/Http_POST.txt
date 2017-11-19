@@ -1,0 +1,13 @@
+POST /user/create HTTP/1.1 
+Cookie: logined=true
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
+Upgrade-Insecure-Requests: 1
+Connection: keep-alive
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36
+Referer: http://localhost:8080/user/form.html
+Host: localhost:8080
+Accept-Encoding: gzip, deflate, br
+Accept-Language: ko-KR,ko;q=0.8,en-US;q=0.6,en;q=0.4
+Content-Length: 39
+
+testKey1=testValue1&testKey2=testValue2
