@@ -22,4 +22,14 @@ public class mStringUtils {
 		}
 		return false;
 	}
+
+	public static boolean isEqual(String target1, String target2) {
+		if (target1 == target2) {
+			return true;
+		}
+		if (target1 == null || target2 == null) {
+			return false;
+		}
+		return target1.equals(target2);
+	}
 }
