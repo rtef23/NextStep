@@ -14,7 +14,7 @@ class HttpHeaders {
 	private Map<String, String> headers = new HashMap<>();
 	
 	void add(String header) {
-		log.debug("header : {}", header);
+//		log.debug("header : {}", header);
 	    String[] splitedHeaders = header.split(":");
 	    headers.put(splitedHeaders[0], splitedHeaders[1].trim());   
 	}
