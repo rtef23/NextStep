@@ -9,56 +9,41 @@ import java.util.List;
 
 import core.jdbc.ConnectionManager;
 import next.model.User;
+import next.refactoring.JdbcTemplate;
 
 public class UserDao {
 	public void insert(User user) throws SQLException {
-		Connection con = null;
-		PreparedStatement pstmt = null;
-		try {
-			con = ConnectionManager.getConnection();
-			String sql = "INSERT INTO USERS VALUES (?, ?, ?, ?)";
-			pstmt = con.prepareStatement(sql);
-			pstmt.setString(1, user.getUserId());
-			pstmt.setString(2, user.getPassword());
-			pstmt.setString(3, user.getName());
-			pstmt.setString(4, user.getEmail());
-
-			pstmt.executeUpdate();
-		} finally {
-			if (pstmt != null) {
-				pstmt.close();
+		JdbcTemplate<Void> jdbcTemplate = new JdbcTemplate<Void>() {
+			@Override
+			protected void setValue(PreparedStatement preparedStatement) throws SQLException {
+				preparedStatement.setString(1, user.getUserId());
+				preparedStatement.setString(2, user.getPassword());
+				preparedStatement.setString(3, user.getName());
+				preparedStatement.setString(4, user.getEmail());
 			}
 
-			if (con != null) {
-				con.close();
-			}
-		}
+			@Override
+			protected void mappingStrategy(ResultSet resultSet) {}
+		};
+
+		jdbcTemplate.execute("INSERT INTO USERS VALUES (?, ?, ?, ?)");
 	}
 
 	public void update(User user) throws SQLException {
-		Connection connection = null;
-		PreparedStatement preparedStatement = null;
-
-		try {
-			connection = ConnectionManager.getConnection();
-			String sql = "UPDATE USERS SET password = ?, name = ?, email = ? WHERE userId = ?";
-			preparedStatement = connection.prepareStatement(sql);
-
-			preparedStatement.setString(1, user.getPassword());
-			preparedStatement.setString(2, user.getName());
-			preparedStatement.setString(3, user.getEmail());
-			preparedStatement.setString(4, user.getUserId());
-
-			preparedStatement.executeUpdate();
-		} finally {
-			if (preparedStatement != null) {
-				preparedStatement.close();
+		JdbcTemplate<Void> jdbcTemplate = new JdbcTemplate<Void>() {
+			@Override
+			protected void setValue(PreparedStatement preparedStatement) throws SQLException {
+				preparedStatement.setString(1, user.getPassword());
+				preparedStatement.setString(2, user.getName());
+				preparedStatement.setString(3, user.getEmail());
+				preparedStatement.setString(4, user.getUserId());
 			}
 
-			if (connection != null) {
-				connection.close();
-			}
-		}
+			@Override
+			protected void mappingStrategy(ResultSet resultSet) {}
+		};
+
+		jdbcTemplate.execute("UPDATE USERS SET password = ?, name = ?, email = ? WHERE userId = ?");
 	}
 
 	public List<User> findAll() throws SQLException {
